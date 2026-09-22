@@ -4,6 +4,9 @@ import com.arthurisidoro.personal_finance_api.dto.request.TransactionRequest;
 import com.arthurisidoro.personal_finance_api.dto.response.TransactionResponse;
 import com.arthurisidoro.personal_finance_api.service.TransactionService;
 import jakarta.validation.Valid;
+
+import java.time.LocalDate;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -46,5 +49,16 @@ public class TransactionController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         transactionService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<Page<TransactionResponse>> findWithFilters(
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Long categoryId,
+            Pageable pageable) {
+        return ResponseEntity.ok(
+                transactionService.findWithFilters(startDate, endDate, type, categoryId, pageable));
     }
 }

@@ -12,6 +12,9 @@ import com.arthurisidoro.personal_finance_api.exception.ResourceNotFoundExceptio
 import com.arthurisidoro.personal_finance_api.mapper.TransactionMapper;
 import com.arthurisidoro.personal_finance_api.repository.CategoryRepository;
 import com.arthurisidoro.personal_finance_api.repository.TransactionRepository;
+
+import java.time.LocalDate;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -106,5 +109,15 @@ public class TransactionService {
         User user = new User();
         user.setId(TempAuthConfig.TEMP_USER_ID);
         return user;
+    }
+
+    public Page<TransactionResponse> findWithFilters(
+            LocalDate startDate, LocalDate endDate, String type, Long categoryId, Pageable pageable) {
+
+        TransactionType parsedType = (type != null) ? parseType(type) : null;
+
+        return transactionRepository.findWithFilters(
+                TempAuthConfig.TEMP_USER_ID, startDate, endDate, parsedType, categoryId, pageable
+        ).map(transactionMapper::toResponse);
     }
 }
