@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -33,4 +34,18 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("categoryId") Long categoryId,
             Pageable pageable
     );
+
+    @Query("""
+                SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t
+                WHERE t.user.id = :userId
+                AND t.type = :type
+                AND (:startDate IS NULL OR t.date >= :startDate)
+                AND (:endDate IS NULL OR t.date <= :endDate)
+                """)
+        BigDecimal sumByUserIdAndTypeAndDateRange(
+                @Param("userId") Long userId,
+                @Param("type") TransactionType type,
+                @Param("startDate") LocalDate startDate,
+                @Param("endDate") LocalDate endDate
+);
 }

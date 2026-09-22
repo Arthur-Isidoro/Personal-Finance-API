@@ -2,6 +2,7 @@ package com.arthurisidoro.personal_finance_api.service;
 
 import com.arthurisidoro.personal_finance_api.config.TempAuthConfig;
 import com.arthurisidoro.personal_finance_api.dto.request.TransactionRequest;
+import com.arthurisidoro.personal_finance_api.dto.response.DashboardResponse;
 import com.arthurisidoro.personal_finance_api.dto.response.TransactionResponse;
 import com.arthurisidoro.personal_finance_api.entity.Category;
 import com.arthurisidoro.personal_finance_api.entity.Transaction;
@@ -13,6 +14,7 @@ import com.arthurisidoro.personal_finance_api.mapper.TransactionMapper;
 import com.arthurisidoro.personal_finance_api.repository.CategoryRepository;
 import com.arthurisidoro.personal_finance_api.repository.TransactionRepository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import org.springframework.data.domain.Page;
@@ -119,5 +121,17 @@ public class TransactionService {
         return transactionRepository.findWithFilters(
                 TempAuthConfig.TEMP_USER_ID, startDate, endDate, parsedType, categoryId, pageable
         ).map(transactionMapper::toResponse);
+    }
+
+    public DashboardResponse getDashboard(LocalDate startDate, LocalDate endDate) {
+        BigDecimal totalIncome = transactionRepository.sumByUserIdAndTypeAndDateRange(
+                TempAuthConfig.TEMP_USER_ID, TransactionType.INCOME, startDate, endDate);
+
+        BigDecimal totalExpense = transactionRepository.sumByUserIdAndTypeAndDateRange(
+                TempAuthConfig.TEMP_USER_ID, TransactionType.EXPENSE, startDate, endDate);
+
+        BigDecimal balance = totalIncome.subtract(totalExpense);
+
+        return new DashboardResponse(totalIncome, totalExpense, balance);
     }
 }
