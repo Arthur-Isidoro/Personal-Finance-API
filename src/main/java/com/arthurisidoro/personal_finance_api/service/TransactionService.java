@@ -2,6 +2,7 @@ package com.arthurisidoro.personal_finance_api.service;
 
 import com.arthurisidoro.personal_finance_api.config.TempAuthConfig;
 import com.arthurisidoro.personal_finance_api.dto.request.TransactionRequest;
+import com.arthurisidoro.personal_finance_api.dto.response.CategoryReportResponse;
 import com.arthurisidoro.personal_finance_api.dto.response.DashboardResponse;
 import com.arthurisidoro.personal_finance_api.dto.response.TransactionResponse;
 import com.arthurisidoro.personal_finance_api.entity.Category;
@@ -16,6 +17,7 @@ import com.arthurisidoro.personal_finance_api.repository.TransactionRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -133,5 +135,10 @@ public class TransactionService {
         BigDecimal balance = totalIncome.subtract(totalExpense);
 
         return new DashboardResponse(totalIncome, totalExpense, balance);
+    }
+
+    public List<CategoryReportResponse> getCategoryReport(LocalDate startDate, LocalDate endDate) {
+        return transactionRepository.findExpensesGroupedByCategory(
+                TempAuthConfig.TEMP_USER_ID, startDate, endDate);
     }
 }

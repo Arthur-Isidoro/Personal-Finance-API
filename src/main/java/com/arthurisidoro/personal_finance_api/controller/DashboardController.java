@@ -1,5 +1,6 @@
 package com.arthurisidoro.personal_finance_api.controller;
 
+import com.arthurisidoro.personal_finance_api.dto.response.CategoryReportResponse;
 import com.arthurisidoro.personal_finance_api.dto.response.DashboardResponse;
 import com.arthurisidoro.personal_finance_api.service.TransactionService;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 public class DashboardController {
@@ -23,5 +25,12 @@ public class DashboardController {
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate) {
         return ResponseEntity.ok(transactionService.getDashboard(startDate, endDate));
+    }
+
+    @GetMapping("/api/reports/categories")
+    public ResponseEntity<List<CategoryReportResponse>> getCategoryReport(
+            @RequestParam(required = false) LocalDate startDate,
+            @RequestParam(required = false) LocalDate endDate) {
+        return ResponseEntity.ok(transactionService.getCategoryReport(startDate, endDate));
     }
 }
