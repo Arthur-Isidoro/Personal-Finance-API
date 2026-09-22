@@ -4,7 +4,9 @@ import com.arthurisidoro.personal_finance_api.config.TempAuthConfig;
 import com.arthurisidoro.personal_finance_api.dto.request.CategoryRequest;
 import com.arthurisidoro.personal_finance_api.dto.response.CategoryResponse;
 import com.arthurisidoro.personal_finance_api.entity.Category;
+import com.arthurisidoro.personal_finance_api.entity.User;
 import com.arthurisidoro.personal_finance_api.exception.ResourceNotFoundException;
+import com.arthurisidoro.personal_finance_api.mapper.CategoryMapper;
 import com.arthurisidoro.personal_finance_api.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,9 +17,11 @@ import java.util.List;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final CategoryMapper categoryMapper;
 
-    public CategoryService(CategoryRepository categoryRepository) {
+    public CategoryService(CategoryRepository categoryRepository, CategoryMapper categoryMapper) {
         this.categoryRepository = categoryRepository;
+        this.categoryMapper = categoryMapper;
     }
 
     @Transactional
@@ -28,13 +32,13 @@ public class CategoryService {
         category.setUser(buildTempUserReference());
 
         Category saved = categoryRepository.save(category);
-        return toResponse(saved);
+        return categoryMapper.toResponse(saved);
     }
 
     public List<CategoryResponse> findAll() {
         return categoryRepository.findByUserId(TempAuthConfig.TEMP_USER_ID)
                 .stream()
-                .map(this::toResponse)
+                .map(categoryMapper::toResponse)
                 .toList();
     }
 
@@ -45,7 +49,7 @@ public class CategoryService {
         category.setType(request.getType());
 
         Category updated = categoryRepository.save(category);
-        return toResponse(updated);
+        return categoryMapper.toResponse(updated);
     }
 
     @Transactional
@@ -59,19 +63,9 @@ public class CategoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada"));
     }
 
-    private com.arthurisidoro.personal_finance_api.entity.User buildTempUserReference() {
-        com.arthurisidoro.personal_finance_api.entity.User user =
-                new com.arthurisidoro.personal_finance_api.entity.User();
+    private User buildTempUserReference() {
+        User user = new User();
         user.setId(TempAuthConfig.TEMP_USER_ID);
         return user;
-    }
-
-    private CategoryResponse toResponse(Category category) {
-        return new CategoryResponse(
-                category.getId(),
-                category.getName(),
-                category.getType(),
-                category.getCreatedAt()
-        );
     }
 }

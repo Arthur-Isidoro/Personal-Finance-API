@@ -4,6 +4,7 @@ import com.arthurisidoro.personal_finance_api.dto.request.RegisterRequest;
 import com.arthurisidoro.personal_finance_api.dto.response.UserResponse;
 import com.arthurisidoro.personal_finance_api.entity.User;
 import com.arthurisidoro.personal_finance_api.exception.EmailAlreadyExistsException;
+import com.arthurisidoro.personal_finance_api.mapper.UserMapper;
 import com.arthurisidoro.personal_finance_api.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -14,10 +15,12 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final UserMapper userMapper;
 
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, UserMapper userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.userMapper = userMapper;
     }
 
     @Transactional
@@ -33,11 +36,6 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        return new UserResponse(
-                savedUser.getId(),
-                savedUser.getName(),
-                savedUser.getEmail(),
-                savedUser.getCreatedAt()
-        );
+        return userMapper.toResponse(savedUser);
     }
 }

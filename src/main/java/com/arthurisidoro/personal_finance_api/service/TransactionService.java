@@ -9,6 +9,7 @@ import com.arthurisidoro.personal_finance_api.entity.TransactionType;
 import com.arthurisidoro.personal_finance_api.entity.User;
 import com.arthurisidoro.personal_finance_api.exception.BusinessRuleException;
 import com.arthurisidoro.personal_finance_api.exception.ResourceNotFoundException;
+import com.arthurisidoro.personal_finance_api.mapper.TransactionMapper;
 import com.arthurisidoro.personal_finance_api.repository.CategoryRepository;
 import com.arthurisidoro.personal_finance_api.repository.TransactionRepository;
 import org.springframework.data.domain.Page;
@@ -21,11 +22,14 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final CategoryRepository categoryRepository;
+    private final TransactionMapper transactionMapper;
 
     public TransactionService(TransactionRepository transactionRepository,
-                              CategoryRepository categoryRepository) {
+                               CategoryRepository categoryRepository,
+                               TransactionMapper transactionMapper) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
+        this.transactionMapper = transactionMapper;
     }
 
     @Transactional
@@ -43,17 +47,17 @@ public class TransactionService {
         transaction.setUser(buildTempUserReference());
 
         Transaction saved = transactionRepository.save(transaction);
-        return toResponse(saved);
+        return transactionMapper.toResponse(saved);
     }
 
     public Page<TransactionResponse> findAll(Pageable pageable) {
         return transactionRepository.findByUserId(TempAuthConfig.TEMP_USER_ID, pageable)
-                .map(this::toResponse);
+                .map(transactionMapper::toResponse);
     }
 
     public TransactionResponse findById(Long id) {
         Transaction transaction = findOwnedOrThrow(id);
-        return toResponse(transaction);
+        return transactionMapper.toResponse(transaction);
     }
 
     @Transactional
@@ -70,7 +74,7 @@ public class TransactionService {
         transaction.setCategory(category);
 
         Transaction updated = transactionRepository.save(transaction);
-        return toResponse(updated);
+        return transactionMapper.toResponse(updated);
     }
 
     @Transactional
@@ -102,20 +106,5 @@ public class TransactionService {
         User user = new User();
         user.setId(TempAuthConfig.TEMP_USER_ID);
         return user;
-    }
-
-    private TransactionResponse toResponse(Transaction transaction) {
-        return new TransactionResponse(
-                transaction.getId(),
-                transaction.getDescription(),
-                transaction.getAmount(),
-                transaction.getType().name(),
-                transaction.getDate(),
-                transaction.getPaymentMethod(),
-                new TransactionResponse.CategorySummary(
-                        transaction.getCategory().getId(),
-                        transaction.getCategory().getName()
-                )
-        );
     }
 }
