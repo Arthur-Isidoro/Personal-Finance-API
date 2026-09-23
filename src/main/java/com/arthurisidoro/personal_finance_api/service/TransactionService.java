@@ -1,6 +1,5 @@
 package com.arthurisidoro.personal_finance_api.service;
 
-import com.arthurisidoro.personal_finance_api.config.TempAuthConfig;
 import com.arthurisidoro.personal_finance_api.dto.request.TransactionRequest;
 import com.arthurisidoro.personal_finance_api.dto.response.CategoryReportResponse;
 import com.arthurisidoro.personal_finance_api.dto.response.DashboardResponse;
@@ -14,15 +13,15 @@ import com.arthurisidoro.personal_finance_api.exception.ResourceNotFoundExceptio
 import com.arthurisidoro.personal_finance_api.mapper.TransactionMapper;
 import com.arthurisidoro.personal_finance_api.repository.CategoryRepository;
 import com.arthurisidoro.personal_finance_api.repository.TransactionRepository;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-
+import com.arthurisidoro.personal_finance_api.security.CurrentUserService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
 
 @Service
 public class TransactionService {
@@ -30,17 +29,21 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final CategoryRepository categoryRepository;
     private final TransactionMapper transactionMapper;
+    private final CurrentUserService currentUserService;
 
     public TransactionService(TransactionRepository transactionRepository,
                                CategoryRepository categoryRepository,
-                               TransactionMapper transactionMapper) {
+                               TransactionMapper transactionMapper,
+                               CurrentUserService currentUserService) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
         this.transactionMapper = transactionMapper;
+        this.currentUserService = currentUserService;
     }
 
     @Transactional
     public TransactionResponse create(TransactionRequest request) {
+        User currentUser = currentUserService.getCurrentUser();
         Category category = findOwnedCategoryOrThrow(request.getCategoryId());
         TransactionType type = parseType(request.getType());
 
@@ -51,14 +54,15 @@ public class TransactionService {
         transaction.setDate(request.getDate());
         transaction.setPaymentMethod(request.getPaymentMethod());
         transaction.setCategory(category);
-        transaction.setUser(buildTempUserReference());
+        transaction.setUser(currentUser);
 
         Transaction saved = transactionRepository.save(transaction);
         return transactionMapper.toResponse(saved);
     }
 
     public Page<TransactionResponse> findAll(Pageable pageable) {
-        return transactionRepository.findByUserId(TempAuthConfig.TEMP_USER_ID, pageable)
+        Long userId = currentUserService.getCurrentUserId();
+        return transactionRepository.findByUserId(userId, pageable)
                 .map(transactionMapper::toResponse);
     }
 
@@ -90,13 +94,45 @@ public class TransactionService {
         transactionRepository.delete(transaction);
     }
 
+    public Page<TransactionResponse> findWithFilters(
+            LocalDate startDate, LocalDate endDate, String type, Long categoryId, Pageable pageable) {
+
+        Long userId = currentUserService.getCurrentUserId();
+        TransactionType parsedType = (type != null) ? parseType(type) : null;
+
+        return transactionRepository.findWithFilters(
+                userId, startDate, endDate, parsedType, categoryId, pageable
+        ).map(transactionMapper::toResponse);
+    }
+
+    public DashboardResponse getDashboard(LocalDate startDate, LocalDate endDate) {
+        Long userId = currentUserService.getCurrentUserId();
+
+        BigDecimal totalIncome = transactionRepository.sumByUserIdAndTypeAndDateRange(
+                userId, TransactionType.INCOME, startDate, endDate);
+
+        BigDecimal totalExpense = transactionRepository.sumByUserIdAndTypeAndDateRange(
+                userId, TransactionType.EXPENSE, startDate, endDate);
+
+        BigDecimal balance = totalIncome.subtract(totalExpense);
+
+        return new DashboardResponse(totalIncome, totalExpense, balance);
+    }
+
+    public List<CategoryReportResponse> getCategoryReport(LocalDate startDate, LocalDate endDate) {
+        Long userId = currentUserService.getCurrentUserId();
+        return transactionRepository.findExpensesGroupedByCategory(userId, startDate, endDate);
+    }
+
     private Transaction findOwnedOrThrow(Long id) {
-        return transactionRepository.findByIdAndUserId(id, TempAuthConfig.TEMP_USER_ID)
+        Long userId = currentUserService.getCurrentUserId();
+        return transactionRepository.findByIdAndUserId(id, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Transação não encontrada"));
     }
 
     private Category findOwnedCategoryOrThrow(Long categoryId) {
-        return categoryRepository.findByIdAndUserId(categoryId, TempAuthConfig.TEMP_USER_ID)
+        Long userId = currentUserService.getCurrentUserId();
+        return categoryRepository.findByIdAndUserId(categoryId, userId)
                 .orElseThrow(() -> new BusinessRuleException(
                         "Categoria não encontrada ou não pertence ao usuário"));
     }
@@ -107,38 +143,5 @@ public class TransactionService {
         } catch (IllegalArgumentException e) {
             throw new BusinessRuleException("Tipo inválido. Use INCOME ou EXPENSE");
         }
-    }
-
-    private User buildTempUserReference() {
-        User user = new User();
-        user.setId(TempAuthConfig.TEMP_USER_ID);
-        return user;
-    }
-
-    public Page<TransactionResponse> findWithFilters(
-            LocalDate startDate, LocalDate endDate, String type, Long categoryId, Pageable pageable) {
-
-        TransactionType parsedType = (type != null) ? parseType(type) : null;
-
-        return transactionRepository.findWithFilters(
-                TempAuthConfig.TEMP_USER_ID, startDate, endDate, parsedType, categoryId, pageable
-        ).map(transactionMapper::toResponse);
-    }
-
-    public DashboardResponse getDashboard(LocalDate startDate, LocalDate endDate) {
-        BigDecimal totalIncome = transactionRepository.sumByUserIdAndTypeAndDateRange(
-                TempAuthConfig.TEMP_USER_ID, TransactionType.INCOME, startDate, endDate);
-
-        BigDecimal totalExpense = transactionRepository.sumByUserIdAndTypeAndDateRange(
-                TempAuthConfig.TEMP_USER_ID, TransactionType.EXPENSE, startDate, endDate);
-
-        BigDecimal balance = totalIncome.subtract(totalExpense);
-
-        return new DashboardResponse(totalIncome, totalExpense, balance);
-    }
-
-    public List<CategoryReportResponse> getCategoryReport(LocalDate startDate, LocalDate endDate) {
-        return transactionRepository.findExpensesGroupedByCategory(
-                TempAuthConfig.TEMP_USER_ID, startDate, endDate);
     }
 }
