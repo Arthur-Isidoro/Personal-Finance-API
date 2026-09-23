@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personal Finance</title>
+<style>
+  :root{
+    --ink:#12181b; --paper:#f6f4ef; --line:#dcd7cc;
+    --income:#2f6f4f; --expense:#a23e3e; --accent:#1f4b43;
+    --mono: "SFMono-Regular", Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family: Georgia, "Times New Roman", serif;
+    background:var(--paper); color:var(--ink);
+  }
+  header{padding:24px 20px 12px; border-bottom:1px solid var(--line)}
+  header h1{margin:0; font-size:22px; letter-spacing:.2px}
+  header p{margin:4px 0 0; color:#6b6459; font-size:13px}
+  main{max-width:760px; margin:0 auto; padding:20px}
+
+  /* Auth screen */
+  #auth{max-width:360px; margin:60px auto; padding:0 16px}
+  #auth h2{font-size:18px; margin-bottom:4px}
+  .tabs{display:flex; gap:16px; margin-bottom:20px; border-bottom:1px solid var(--line)}
+  .tabs button{background:none; border:none; padding:8px 0; font:inherit; font-size:14px;
+    color:#8a8478; cursor:pointer; border-bottom:2px solid transparent}
+  .tabs button.active{color:var(--ink); border-color:var(--accent)}
+  label{display:block; font-size:12px; color:#6b6459; margin:12px 0 4px}
+  input, select{width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:3px;
+    font:14px/1.4 var(--mono); background:#fff}
+  button.primary{margin-top:18px; width:100%; padding:10px; background:var(--accent); color:#fff;
+    border:none; border-radius:3px; font:14px Georgia, serif; cursor:pointer}
+  button.primary:hover{opacity:.92}
+  .msg{font-size:13px; margin-top:10px; padding:8px 10px; border-radius:3px}
+  .msg.err{background:#f7e6e6; color:var(--expense)}
+  .msg.ok{background:#e8f0ea; color:var(--income)}
+
+  /* App */
+  #app{display:none}
+  nav{display:flex; gap:4px; margin-bottom:20px}
+  nav button{flex:1; padding:9px; background:#fff; border:1px solid var(--line); font:13px Georgia,serif;
+    cursor:pointer; color:#6b6459}
+  nav button.active{background:var(--ink); color:#fff; border-color:var(--ink)}
+  .view{display:none}
+  .view.active{display:block}
+
+  .card{border:1px solid var(--line); border-radius:3px; padding:16px; margin-bottom:14px; background:#fff}
+  .card h3{margin:0 0 10px; font-size:14px; color:#6b6459; font-weight:normal; text-transform:none}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; text-align:center}
+  .grid3 div span{display:block}
+  .amount{font:20px/1.2 var(--mono); margin-top:4px}
+  .amount.pos{color:var(--income)} .amount.neg{color:var(--expense)}
+
+  form.inline{display:flex; gap:8px; flex-wrap:wrap; align-items:end; margin-bottom:16px}
+  form.inline > div{flex:1; min-width:110px}
+  form.inline label{margin:0 0 4px}
+  form.inline button{padding:9px 14px; background:var(--accent); color:#fff; border:none;
+    border-radius:3px; cursor:pointer; font:13px Georgia,serif; height:37px}
+
+  ul.list{list-style:none; margin:0; padding:0}
+  ul.list li{display:flex; justify-content:space-between; align-items:center;
+    padding:10px 0; border-bottom:1px solid var(--line); font-size:14px}
+  ul.list li:last-child{border-bottom:none}
+  .desc{flex:1}
+  .desc small{display:block; color:#8a8478; font-size:11px; margin-top:2px}
+  .val{font-family:var(--mono); margin-right:12px}
+  .del{background:none; border:none; color:#a23e3e; cursor:pointer; font-size:13px}
+  .empty{color:#8a8478; font-size:13px; padding:10px 0}
+  #logout{background:none; border:none; color:#8a8478; font-size:12px; cursor:pointer; text-decoration:underline}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Personal Finance</h1>
+  <p>connects to your local API at <span id="apiUrl"></span></p>
+</header>
+
+<main>
+  <section id="auth">
+    <div class="tabs">
+      <button id="tabLogin" class="active">Log in</button>
+      <button id="tabRegister">Register</button>
+    </div>
+
+    <form id="loginForm">
+      <label>Email</label>
+      <input type="email" id="loginEmail" required>
+      <label>Password</label>
+      <input type="password" id="loginPassword" required>
+      <button class="primary" type="submit">Log in</button>
+    </form>
+
+    <form id="registerForm" style="display:none">
+      <label>Name</label>
+      <input type="text" id="regName" required>
+      <label>Email</label>
+      <input type="email" id="regEmail" required>
+      <label>Password (min 6 chars)</label>
+      <input type="password" id="regPassword" required minlength="6">
+      <button class="primary" type="submit">Create account</button>
+    </form>
+
+    <div id="authMsg"></div>
+  </section>
+
+  <section id="app">
+    <nav>
+      <button data-view="dashboard" class="active">Dashboard</button>
+      <button data-view="categories">Categories</button>
+      <button data-view="transactions">Transactions</button>
+      <button id="logout" style="flex:0">Log out</button>
+    </nav>
+
+    <div id="viewDashboard" class="view active">
+      <div class="card">
+        <h3>This month</h3>
+        <div class="grid3">
+          <div><span>Income</span><span id="dIncome" class="amount pos">—</span></div>
+          <div><span>Expense</span><span id="dExpense" class="amount neg">—</span></div>
+          <div><span>Balance</span><span id="dBalance" class="amount">—</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>By category</h3>
+        <ul class="list" id="reportList"><li class="empty">Loading…</li></ul>
+      </div>
+    </div>
+
+    <div id="viewCategories" class="view">
+      <form class="inline" id="categoryForm">
+        <div><label>Name</label><input id="catName" required></div>
+        <div><label>Type</label>
+          <select id="catType"><option value="EXPENSE">EXPENSE</option><option value="INCOME">INCOME</option></select>
+        </div>
+        <button type="submit">Add</button>
+      </form>
+      <div class="card"><ul class="list" id="categoryList"><li class="empty">Loading…</li></ul></div>
+    </div>
+
+    <div id="viewTransactions" class="view">
+      <form class="inline" id="transactionForm">
+        <div><label>Description</label><input id="txDesc" required></div>
+        <div><label>Amount</label><input id="txAmount" type="number" step="0.01" required></div>
+        <div><label>Type</label>
+          <select id="txType"><option value="EXPENSE">EXPENSE</option><option value="INCOME">INCOME</option></select>
+        </div>
+        <div><label>Category</label><select id="txCategory" required></select></div>
+        <div><label>Date</label><input id="txDate" type="date" required></div>
+        <button type="submit">Add</button>
+      </form>
+      <div class="card"><ul class="list" id="transactionList"><li class="empty">Loading…</li></ul></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const API = "http://localhost:8080";
+document.getElementById("apiUrl").textContent = API;
+let token = null;
+
+// ---------- helpers ----------
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: "Bearer " + token } : {}),
+      ...(opts.headers || {})
+    }
+  });
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((data && data.message) || ("Error " + res.status));
+  return data;
+}
+const money = n => (n ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// ---------- auth ----------
+const tabLogin = document.getElementById("tabLogin");
+const tabRegister = document.getElementById("tabRegister");
+const loginForm = document.getElementById("loginForm");
+const registerForm = document.getElementById("registerForm");
+const authMsg = document.getElementById("authMsg");
+
+tabLogin.onclick = () => { tabLogin.classList.add("active"); tabRegister.classList.remove("active");
+  loginForm.style.display="block"; registerForm.style.display="none"; authMsg.innerHTML=""; };
+tabRegister.onclick = () => { tabRegister.classList.add("active"); tabLogin.classList.remove("active");
+  loginForm.style.display="none"; registerForm.style.display="block"; authMsg.innerHTML=""; };
+
+loginForm.onsubmit = async e => {
+  e.preventDefault();
+  authMsg.innerHTML = "";
+  try {
+    const data = await api("/api/auth/login", { method: "POST", body: JSON.stringify({
+      email: document.getElementById("loginEmail").value,
+      password: document.getElementById("loginPassword").value
+    })});
+    token = data.token;
+    document.getElementById("auth").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    loadAll();
+  } catch (err) {
+    authMsg.innerHTML = `<div class="msg err">${err.message}</div>`;
+  }
+};
+
+registerForm.onsubmit = async e => {
+  e.preventDefault();
+  authMsg.innerHTML = "";
+  try {
+    await api("/api/auth/register", { method: "POST", body: JSON.stringify({
+      name: document.getElementById("regName").value,
+      email: document.getElementById("regEmail").value,
+      password: document.getElementById("regPassword").value
+    })});
+    authMsg.innerHTML = `<div class="msg ok">Account created — log in now.</div>`;
+    tabLogin.click();
+  } catch (err) {
+    authMsg.innerHTML = `<div class="msg err">${err.message}</div>`;
+  }
+};
+
+document.getElementById("logout").onclick = () => {
+  token = null;
+  document.getElementById("app").style.display = "none";
+  document.getElementById("auth").style.display = "block";
+};
+
+// ---------- nav ----------
+document.querySelectorAll("nav button[data-view]").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll("nav button[data-view]").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("view" + btn.dataset.view[0].toUpperCase() + btn.dataset.view.slice(1)).classList.add("active");
+  };
+});
+
+function loadAll() { loadDashboard(); loadCategories(); loadTransactions(); }
+
+// ---------- categories ----------
+async function loadCategories() {
+  try {
+    const cats = await api("/api/categories");
+    const list = document.getElementById("categoryList");
+    const sel = document.getElementById("txCategory");
+    list.innerHTML = cats.length ? "" : `<li class="empty">No categories yet.</li>`;
+    sel.innerHTML = "";
+    cats.forEach(c => {
+      list.innerHTML += `<li><span class="desc">${c.name}<small>${c.type || ""}</small></span>
+        <button class="del" onclick="deleteCategory(${c.id})">delete</button></li>`;
+      sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    });
+  } catch (err) { console.error(err); }
+}
+document.getElementById("categoryForm").onsubmit = async e => {
+  e.preventDefault();
+  await api("/api/categories", { method: "POST", body: JSON.stringify({
+    name: document.getElementById("catName").value,
+    type: document.getElementById("catType").value
+  })});
+  document.getElementById("catName").value = "";
+  loadCategories();
+};
+async function deleteCategory(id) { await api("/api/categories/" + id, { method: "DELETE" }); loadCategories(); }
+
+// ---------- transactions ----------
+async function loadTransactions() {
+  try {
+    const page = await api("/api/transactions?size=20");
+    const list = document.getElementById("transactionList");
+    list.innerHTML = page.content.length ? "" : `<li class="empty">No transactions yet.</li>`;
+    page.content.forEach(t => {
+      const cls = t.type === "INCOME" ? "pos" : "neg";
+      list.innerHTML += `<li><span class="desc">${t.description}<small>${t.date} · ${t.category.name}</small></span>
+        <span class="val ${cls}">${t.type === "INCOME" ? "+" : "-"}${money(t.amount)}</span>
+        <button class="del" onclick="deleteTransaction(${t.id})">delete</button></li>`;
+    });
+  } catch (err) { console.error(err); }
+}
+document.getElementById("transactionForm").onsubmit = async e => {
+  e.preventDefault();
+  try {
+    await api("/api/transactions", { method: "POST", body: JSON.stringify({
+      description: document.getElementById("txDesc").value,
+      amount: parseFloat(document.getElementById("txAmount").value),
+      type: document.getElementById("txType").value,
+      categoryId: parseInt(document.getElementById("txCategory").value),
+      date: document.getElementById("txDate").value
+    })});
+    document.getElementById("txDesc").value = "";
+    document.getElementById("txAmount").value = "";
+    loadTransactions(); loadDashboard();
+  } catch (err) { alert(err.message); }
+};
+async function deleteTransaction(id) { await api("/api/transactions/" + id, { method: "DELETE" }); loadTransactions(); loadDashboard(); }
+
+// ---------- dashboard ----------
+async function loadDashboard() {
+  try {
+    const d = await api("/api/dashboard");
+    document.getElementById("dIncome").textContent = money(d.totalIncome);
+    document.getElementById("dExpense").textContent = money(d.totalExpense);
+    const bal = document.getElementById("dBalance");
+    bal.textContent = money(d.balance);
+    bal.className = "amount " + (d.balance >= 0 ? "pos" : "neg");
+
+    const report = await api("/api/reports/categories");
+    const list = document.getElementById("reportList");
+    list.innerHTML = report.length ? "" : `<li class="empty">No expenses yet.</li>`;
+    report.forEach(r => {
+      list.innerHTML += `<li><span class="desc">${r.categoryName}</span><span class="val neg">${money(r.totalAmount)}</span></li>`;
+    });
+  } catch (err) { console.error(err); }
+}
+</script>
+</body>
+</html>
