@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { usePreferences } from '../context/PreferencesContext'
 import {
   listTransactions,
   filterTransactions,
@@ -24,6 +25,7 @@ const emptyForm = { description: '', amount: '', type: 'EXPENSE', categoryId: ''
 export default function Transactions() {
   const { token } = useAuth()
   const { push } = useToast()
+  const { currency, language, t } = usePreferences()
 
   const [categories, setCategories] = useState([])
   const [page, setPage] = useState({ content: [], totalPages: 0, number: 0, first: true, last: true })
@@ -50,11 +52,11 @@ export default function Transactions() {
         : await listTransactions(token, { page: pageIndex, size: 10 })
       setPage(data)
     } catch {
-      setError("We couldn't load your transactions. Please try again.")
+      setError(t('transactions.loadError'))
     } finally {
       setLoading(false)
     }
-  }, [token, pageIndex, filters, filtersActive])
+  }, [token, pageIndex, filters, filtersActive, t])
 
   useEffect(() => {
     listCategories(token).then(setCategories).catch(() => {})
@@ -71,15 +73,15 @@ export default function Transactions() {
     setModalOpen(true)
   }
 
-  const openEdit = (t) => {
-    setEditing(t)
+  const openEdit = (tx) => {
+    setEditing(tx)
     setForm({
-      description: t.description,
-      amount: t.amount,
-      type: t.type,
-      categoryId: t.category.id,
-      date: t.date,
-      paymentMethod: t.paymentMethod || '',
+      description: tx.description,
+      amount: tx.amount,
+      type: tx.type,
+      categoryId: tx.category.id,
+      date: tx.date,
+      paymentMethod: tx.paymentMethod || '',
     })
     setFormError('')
     setModalOpen(true)
@@ -93,15 +95,15 @@ export default function Transactions() {
     try {
       if (editing) {
         await updateTransaction(token, editing.id, payload)
-        push('Transaction updated.', 'success')
+        push(t('transactions.updated'), 'success')
       } else {
         await createTransaction(token, payload)
-        push('Transaction added.', 'success')
+        push(t('transactions.created'), 'success')
       }
       setModalOpen(false)
       load()
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Something went wrong.')
+      setFormError(err instanceof ApiError ? err.message : t('auth.genericError'))
     } finally {
       setSaving(false)
     }
@@ -110,11 +112,11 @@ export default function Transactions() {
   const confirmDelete = async () => {
     try {
       await deleteTransaction(token, confirmId)
-      push('Transaction deleted.', 'success')
+      push(t('transactions.deleted'), 'success')
       setConfirmId(null)
       load()
     } catch (err) {
-      push(err instanceof ApiError ? err.message : 'Could not delete.', 'error')
+      push(err instanceof ApiError ? err.message : t('transactions.deleteError'), 'error')
     }
   }
 
@@ -131,35 +133,35 @@ export default function Transactions() {
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Transactions</h1>
-        <p className="page-subtitle">All your income and expenses.</p>
+        <h1>{t('transactions.title')}</h1>
+        <p className="page-subtitle">{t('transactions.subtitle')}</p>
       </div>
 
       <div className="toolbar">
         <div className="filters">
           <Input
-            label="From"
+            label={t('transactions.from')}
             type="date"
             value={filters.startDate}
             onChange={(e) => setFilter({ startDate: e.target.value })}
           />
           <Input
-            label="To"
+            label={t('transactions.to')}
             type="date"
             value={filters.endDate}
             onChange={(e) => setFilter({ endDate: e.target.value })}
           />
-          <Select label="Type" value={filters.type} onChange={(e) => setFilter({ type: e.target.value })}>
-            <option value="">All</option>
-            <option value="INCOME">Income</option>
-            <option value="EXPENSE">Expense</option>
+          <Select label={t('transactions.type')} value={filters.type} onChange={(e) => setFilter({ type: e.target.value })}>
+            <option value="">{t('transactions.all')}</option>
+            <option value="INCOME">{t('transactions.income')}</option>
+            <option value="EXPENSE">{t('transactions.expense')}</option>
           </Select>
           <Select
-            label="Category"
+            label={t('transactions.category')}
             value={filters.categoryId}
             onChange={(e) => setFilter({ categoryId: e.target.value })}
           >
-            <option value="">All</option>
+            <option value="">{t('transactions.all')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -168,22 +170,22 @@ export default function Transactions() {
           </Select>
           {filtersActive && (
             <Button variant="secondary" type="button" onClick={clearFilters}>
-              Clear filters
+              {t('transactions.clearFilters')}
             </Button>
           )}
         </div>
-        <Button onClick={openCreate}>+ Add transaction</Button>
+        <Button onClick={openCreate}>{t('transactions.add')}</Button>
       </div>
 
       {loading ? (
-        <Loading label="Loading transactions…" />
+        <Loading label={t('transactions.loading')} />
       ) : error ? (
-        <EmptyState title="Something went wrong" description={error} />
+        <EmptyState title={t('common.somethingWrong')} description={error} />
       ) : page.content.length === 0 ? (
         <EmptyState
-          title={filtersActive ? 'No results' : 'No transactions yet'}
-          description={filtersActive ? 'Try adjusting your filters.' : 'Start by adding your first transaction.'}
-          action={!filtersActive && <Button onClick={openCreate}>+ Add transaction</Button>}
+          title={filtersActive ? t('transactions.noResults') : t('transactions.noneYet')}
+          description={filtersActive ? t('transactions.adjustFilters') : t('transactions.startFirst')}
+          action={!filtersActive && <Button onClick={openCreate}>{t('transactions.add')}</Button>}
         />
       ) : (
         <>
@@ -191,37 +193,39 @@ export default function Transactions() {
             <table>
               <thead>
                 <tr>
-                  <th>Description</th>
-                  <th>Category</th>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Amount</th>
+                  <th>{t('transactions.description')}</th>
+                  <th>{t('transactions.category')}</th>
+                  <th>{t('transactions.date')}</th>
+                  <th>{t('transactions.type')}</th>
+                  <th>{t('transactions.amount')}</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {page.content.map((t) => (
-                  <tr key={t.id}>
-                    <td>{t.description}</td>
-                    <td>{t.category.name}</td>
-                    <td>{formatDate(t.date)}</td>
+                {page.content.map((tx) => (
+                  <tr key={tx.id}>
+                    <td>{tx.description}</td>
+                    <td>{tx.category.name}</td>
+                    <td>{formatDate(tx.date, language)}</td>
                     <td>
-                      <Badge tone={t.type === 'INCOME' ? 'positive' : 'negative'}>{t.type}</Badge>
+                      <Badge tone={tx.type === 'INCOME' ? 'positive' : 'negative'}>
+                        {tx.type === 'INCOME' ? t('transactions.income') : t('transactions.expense')}
+                      </Badge>
                     </td>
-                    <td className={t.type === 'INCOME' ? 'positive' : 'negative'}>
-                      {t.type === 'INCOME' ? '+' : '-'}
-                      {formatCurrency(t.amount)}
+                    <td className={tx.type === 'INCOME' ? 'positive' : 'negative'}>
+                      {tx.type === 'INCOME' ? '+' : '-'}
+                      {formatCurrency(tx.amount, currency)}
                     </td>
                     <td className="row-actions">
-                      <button className="link-btn" onClick={() => openEdit(t)}>
-                        Edit
+                      <button className="link-btn" onClick={() => openEdit(tx)}>
+                        {t('transactions.edit')}
                       </button>
                       <button
                         className="link-btn"
                         style={{ color: 'var(--negative)' }}
-                        onClick={() => setConfirmId(t.id)}
+                        onClick={() => setConfirmId(tx.id)}
                       >
-                        Delete
+                        {t('transactions.delete')}
                       </button>
                     </td>
                   </tr>
@@ -231,25 +235,25 @@ export default function Transactions() {
           </div>
 
           <div className="card-list">
-            {page.content.map((t) => (
-              <div key={t.id} className="tx-card">
+            {page.content.map((tx) => (
+              <div key={tx.id} className="tx-card">
                 <div className="tx-row">
                   <div>
-                    <Badge tone={t.type === 'INCOME' ? 'positive' : 'negative'}>{t.category.name}</Badge>
-                    <p className="tx-desc">{t.description}</p>
-                    <p className="tx-date">{formatDate(t.date)}</p>
+                    <Badge tone={tx.type === 'INCOME' ? 'positive' : 'negative'}>{tx.category.name}</Badge>
+                    <p className="tx-desc">{tx.description}</p>
+                    <p className="tx-date">{formatDate(tx.date, language)}</p>
                   </div>
-                  <span className={t.type === 'INCOME' ? 'positive' : 'negative'}>
-                    {t.type === 'INCOME' ? '+' : '-'}
-                    {formatCurrency(t.amount)}
+                  <span className={tx.type === 'INCOME' ? 'positive' : 'negative'}>
+                    {tx.type === 'INCOME' ? '+' : '-'}
+                    {formatCurrency(tx.amount, currency)}
                   </span>
                 </div>
                 <div className="row-actions">
-                  <button className="link-btn" onClick={() => openEdit(t)}>
-                    Edit
+                  <button className="link-btn" onClick={() => openEdit(tx)}>
+                    {t('transactions.edit')}
                   </button>
-                  <button className="link-btn" style={{ color: 'var(--negative)' }} onClick={() => setConfirmId(t.id)}>
-                    Delete
+                  <button className="link-btn" style={{ color: 'var(--negative)' }} onClick={() => setConfirmId(tx.id)}>
+                    {t('transactions.delete')}
                   </button>
                 </div>
               </div>
@@ -258,28 +262,30 @@ export default function Transactions() {
 
           <div className="pagination">
             <button className="link-btn" disabled={page.first} onClick={() => setPageIndex((p) => p - 1)}>
-              Previous
+              {t('transactions.previous')}
             </button>
-            <span>
-              Page {page.number + 1} of {Math.max(page.totalPages, 1)}
-            </span>
+            <span>{t('transactions.pageOf', { current: page.number + 1, total: Math.max(page.totalPages, 1) })}</span>
             <button className="link-btn" disabled={page.last} onClick={() => setPageIndex((p) => p + 1)}>
-              Next
+              {t('transactions.next')}
             </button>
           </div>
         </>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit transaction' : 'Add transaction'}>
+      <Modal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={editing ? t('transactions.editTitle') : t('transactions.addTitle')}
+      >
         <form onSubmit={submit}>
           <Input
-            label="Description"
+            label={t('transactions.description')}
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             required
           />
           <Input
-            label="Amount"
+            label={t('transactions.amount')}
             type="number"
             step="0.01"
             min="0.01"
@@ -287,18 +293,18 @@ export default function Transactions() {
             onChange={(e) => setForm({ ...form, amount: e.target.value })}
             required
           />
-          <Select label="Type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-            <option value="EXPENSE">Expense</option>
-            <option value="INCOME">Income</option>
+          <Select label={t('transactions.type')} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+            <option value="EXPENSE">{t('transactions.expense')}</option>
+            <option value="INCOME">{t('transactions.income')}</option>
           </Select>
           <Select
-            label="Category"
+            label={t('transactions.category')}
             value={form.categoryId}
             onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
             required
           >
             <option value="" disabled>
-              Select a category
+              {t('transactions.selectCategory')}
             </option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -307,32 +313,32 @@ export default function Transactions() {
             ))}
           </Select>
           <Input
-            label="Date"
+            label={t('transactions.date')}
             type="date"
             value={form.date}
             onChange={(e) => setForm({ ...form, date: e.target.value })}
             required
           />
           <Input
-            label="Payment method (optional)"
+            label={t('transactions.paymentMethod')}
             value={form.paymentMethod}
             onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
           />
           {formError && <p className="form-error">{formError}</p>}
           <Button type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('transactions.saving') : t('transactions.save')}
           </Button>
         </form>
       </Modal>
 
-      <Modal open={!!confirmId} onClose={() => setConfirmId(null)} title="Delete transaction">
-        <p>Are you sure you want to delete this transaction?</p>
+      <Modal open={!!confirmId} onClose={() => setConfirmId(null)} title={t('transactions.deleteTitle')}>
+        <p>{t('transactions.deleteConfirm')}</p>
         <div className="row-actions" style={{ marginTop: 16, justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => setConfirmId(null)}>
-            Cancel
+            {t('transactions.cancel')}
           </Button>
           <Button variant="danger" onClick={confirmDelete}>
-            Delete
+            {t('transactions.delete')}
           </Button>
         </div>
       </Modal>

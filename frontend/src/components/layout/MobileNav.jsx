@@ -1,12 +1,16 @@
 import { NavLink } from 'react-router-dom'
-
-const items = [
-  { to: '/', label: 'Dashboard' },
-  { to: '/transactions', label: 'Transactions' },
-  { to: '/categories', label: 'Categories' },
-]
+import { usePreferences } from '../../context/PreferencesContext'
 
 export default function MobileNav() {
+  const { t } = usePreferences()
+
+  const items = [
+    { to: '/', label: t('nav.dashboard') },
+    { to: '/transactions', label: t('nav.transactions') },
+    { to: '/categories', label: t('nav.categories') },
+    { to: '/settings', label: t('nav.settings') },
+  ]
+
   return (
     <nav className="mobile-nav">
       {items.map((i) => (

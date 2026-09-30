@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { login } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { usePreferences } from '../context/PreferencesContext'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 import { ApiError } from '../api/client'
@@ -14,6 +15,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const { loginWithToken } = useAuth()
   const { push } = useToast()
+  const { t } = usePreferences()
   const navigate = useNavigate()
 
   const submit = async (e) => {
@@ -23,10 +25,10 @@ export default function Login() {
     try {
       const data = await login({ email, password })
       loginWithToken(data.token)
-      push('Welcome back!', 'success')
+      push(t('auth.welcomeBack'), 'success')
       navigate('/')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong.')
+      setError(err instanceof ApiError ? err.message : t('auth.genericError'))
     } finally {
       setLoading(false)
     }
@@ -35,10 +37,10 @@ export default function Login() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={submit}>
-        <h1>Personal Finance</h1>
-        <p className="auth-subtitle">Log in to see your overview.</p>
+        <h1>{t('auth.loginTitle')}</h1>
+        <p className="auth-subtitle">{t('auth.loginSubtitle')}</p>
         <Input
-          label="Email"
+          label={t('auth.email')}
           id="email"
           type="email"
           value={email}
@@ -46,7 +48,7 @@ export default function Login() {
           required
         />
         <Input
-          label="Password"
+          label={t('auth.password')}
           id="password"
           type="password"
           value={password}
@@ -55,10 +57,10 @@ export default function Login() {
         />
         {error && <p className="form-error">{error}</p>}
         <Button type="submit" disabled={loading}>
-          {loading ? 'Logging in…' : 'Log in'}
+          {loading ? t('auth.loginLoading') : t('auth.loginButton')}
         </Button>
         <p className="auth-switch">
-          No account? <Link to="/register">Create one</Link>
+          {t('auth.noAccount')} <Link to="/register">{t('auth.createOne')}</Link>
         </p>
       </form>
     </div>

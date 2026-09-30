@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
+import { usePreferences } from '../context/PreferencesContext'
 import { listCategories, createCategory, updateCategory, deleteCategory } from '../api/categories'
 import Loading from '../components/ui/Loading'
 import EmptyState from '../components/ui/EmptyState'
@@ -16,6 +17,7 @@ const emptyForm = { name: '', type: 'EXPENSE' }
 export default function Categories() {
   const { token } = useAuth()
   const { push } = useToast()
+  const { t } = usePreferences()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -33,7 +35,7 @@ export default function Categories() {
     try {
       setCategories(await listCategories(token))
     } catch {
-      setError("We couldn't load your categories. Please try again.")
+      setError(t('categories.loadError'))
     } finally {
       setLoading(false)
     }
@@ -65,15 +67,15 @@ export default function Categories() {
     try {
       if (editing) {
         await updateCategory(token, editing.id, form)
-        push('Category updated.', 'success')
+        push(t('categories.updated'), 'success')
       } else {
         await createCategory(token, form)
-        push('Category created.', 'success')
+        push(t('categories.created'), 'success')
       }
       setModalOpen(false)
       load()
     } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Something went wrong.')
+      setFormError(err instanceof ApiError ? err.message : t('auth.genericError'))
     } finally {
       setSaving(false)
     }
@@ -82,43 +84,43 @@ export default function Categories() {
   const confirmDelete = async () => {
     try {
       await deleteCategory(token, confirmId)
-      push('Category deleted.', 'success')
+      push(t('categories.deleted'), 'success')
       setConfirmId(null)
       load()
     } catch (err) {
-      push(err instanceof ApiError ? err.message : 'Could not delete.', 'error')
+      push(err instanceof ApiError ? err.message : t('categories.deleteError'), 'error')
     }
   }
 
   return (
     <div className="page">
       <div className="page-header">
-        <h1>Categories</h1>
-        <p className="page-subtitle">Organize your income and expenses.</p>
+        <h1>{t('categories.title')}</h1>
+        <p className="page-subtitle">{t('categories.subtitle')}</p>
       </div>
 
       <div className="toolbar">
         <div />
-        <Button onClick={openCreate}>+ Add category</Button>
+        <Button onClick={openCreate}>{t('categories.add')}</Button>
       </div>
 
       {loading ? (
-        <Loading label="Loading categories…" />
+        <Loading label={t('categories.loading')} />
       ) : error ? (
-        <EmptyState title="Something went wrong" description={error} />
+        <EmptyState title={t('common.somethingWrong')} description={error} />
       ) : categories.length === 0 ? (
         <EmptyState
-          title="No categories yet"
-          description="Create one to start organizing your transactions."
-          action={<Button onClick={openCreate}>+ Add category</Button>}
+          title={t('categories.noneYet')}
+          description={t('categories.createOne')}
+          action={<Button onClick={openCreate}>{t('categories.add')}</Button>}
         />
       ) : (
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Category</th>
-                <th>Type</th>
+                <th>{t('categories.name')}</th>
+                <th>{t('categories.type')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -127,18 +129,20 @@ export default function Categories() {
                 <tr key={c.id}>
                   <td>{c.name}</td>
                   <td>
-                    <Badge tone={c.type === 'INCOME' ? 'positive' : 'negative'}>{c.type}</Badge>
+                    <Badge tone={c.type === 'INCOME' ? 'positive' : 'negative'}>
+                      {c.type === 'INCOME' ? t('categories.income') : t('categories.expense')}
+                    </Badge>
                   </td>
                   <td className="row-actions">
                     <button className="link-btn" onClick={() => openEdit(c)}>
-                      Edit
+                      {t('categories.edit')}
                     </button>
                     <button
                       className="link-btn"
                       style={{ color: 'var(--negative)' }}
                       onClick={() => setConfirmId(c.id)}
                     >
-                      Delete
+                      {t('categories.delete')}
                     </button>
                   </td>
                 </tr>
@@ -148,28 +152,28 @@ export default function Categories() {
         </div>
       )}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit category' : 'Add category'}>
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? t('categories.editTitle') : t('categories.addTitle')}>
         <form onSubmit={submit}>
-          <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <Select label="Type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-            <option value="EXPENSE">Expense</option>
-            <option value="INCOME">Income</option>
+          <Input label={t('categories.name')} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+          <Select label={t('categories.type')} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+            <option value="EXPENSE">{t('categories.expense')}</option>
+            <option value="INCOME">{t('categories.income')}</option>
           </Select>
           {formError && <p className="form-error">{formError}</p>}
           <Button type="submit" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('categories.saving') : t('categories.save')}
           </Button>
         </form>
       </Modal>
 
-      <Modal open={!!confirmId} onClose={() => setConfirmId(null)} title="Delete category">
-        <p>Are you sure you want to delete this category?</p>
+      <Modal open={!!confirmId} onClose={() => setConfirmId(null)} title={t('categories.deleteTitle')}>
+        <p>{t('categories.deleteConfirm')}</p>
         <div className="row-actions" style={{ marginTop: 16, justifyContent: 'flex-end' }}>
           <Button variant="secondary" onClick={() => setConfirmId(null)}>
-            Cancel
+            {t('categories.cancel')}
           </Button>
           <Button variant="danger" onClick={confirmDelete}>
-            Delete
+            {t('categories.delete')}
           </Button>
         </div>
       </Modal>

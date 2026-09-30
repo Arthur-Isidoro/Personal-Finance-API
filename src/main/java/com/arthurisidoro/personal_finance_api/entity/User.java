@@ -23,9 +23,38 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 3)
+    private Currency currency;
+
+    @Column(length = 5)
+    private String language;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.currency == null) {
+            this.currency = Currency.BRL;
+        }
+        if (this.language == null) {
+            this.language = "pt-BR";
+        }
+    }
+
+    public Currency getCurrency() {
+        return currency != null ? currency : Currency.BRL;
+    }
+
+    public void setCurrency(Currency currency) {
+        this.currency = currency;
+    }
+
+    public String getLanguage() {
+        return language != null ? language : "pt-BR";
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
     }
 
     public Long getId() {

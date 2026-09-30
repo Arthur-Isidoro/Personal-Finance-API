@@ -1,9 +1,11 @@
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
+import { usePreferences } from '../../context/PreferencesContext'
 
 export default function Topbar() {
   const { logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const { t } = usePreferences()
   return (
     <header className="topbar">
       <div />
@@ -12,7 +14,7 @@ export default function Topbar() {
           {theme === 'light' ? '☾' : '☀'}
         </button>
         <button className="link-btn" onClick={logout}>
-          Log out
+          {t('nav.logout')}
         </button>
       </div>
     </header>

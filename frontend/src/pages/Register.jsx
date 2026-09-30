@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { register } from '../api/auth'
 import { useToast } from '../context/ToastContext'
+import { usePreferences } from '../context/PreferencesContext'
 import Input from '../components/ui/Input'
 import Button from '../components/ui/Button'
 import { ApiError } from '../api/client'
@@ -11,6 +12,7 @@ export default function Register() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { push } = useToast()
+  const { t } = usePreferences()
   const navigate = useNavigate()
 
   const submit = async (e) => {
@@ -19,10 +21,10 @@ export default function Register() {
     setLoading(true)
     try {
       await register(form)
-      push('Account created. You can log in now.', 'success')
+      push(t('auth.accountCreated'), 'success')
       navigate('/login')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong.')
+      setError(err instanceof ApiError ? err.message : t('auth.genericError'))
     } finally {
       setLoading(false)
     }
@@ -31,23 +33,23 @@ export default function Register() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={submit}>
-        <h1>Create your account</h1>
-        <p className="auth-subtitle">Start tracking your finances.</p>
+        <h1>{t('auth.registerTitle')}</h1>
+        <p className="auth-subtitle">{t('auth.registerSubtitle')}</p>
         <Input
-          label="Name"
+          label={t('auth.name')}
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           required
         />
         <Input
-          label="Email"
+          label={t('auth.email')}
           type="email"
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           required
         />
         <Input
-          label="Password"
+          label={t('auth.password')}
           type="password"
           minLength={6}
           value={form.password}
@@ -56,10 +58,10 @@ export default function Register() {
         />
         {error && <p className="form-error">{error}</p>}
         <Button type="submit" disabled={loading}>
-          {loading ? 'Creating…' : 'Create account'}
+          {loading ? t('auth.registerLoading') : t('auth.registerButton')}
         </Button>
         <p className="auth-switch">
-          Already have an account? <Link to="/login">Log in</Link>
+          {t('auth.hasAccount')} <Link to="/login">{t('auth.loginLink')}</Link>
         </p>
       </form>
     </div>

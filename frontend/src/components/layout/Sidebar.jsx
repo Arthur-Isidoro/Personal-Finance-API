@@ -1,15 +1,19 @@
 import { NavLink } from 'react-router-dom'
-
-const items = [
-  { to: '/', label: 'Dashboard', icon: '◧' },
-  { to: '/transactions', label: 'Transactions', icon: '↕' },
-  { to: '/categories', label: 'Categories', icon: '▤' },
-]
+import { usePreferences } from '../../context/PreferencesContext'
 
 export default function Sidebar() {
+  const { t } = usePreferences()
+
+  const items = [
+    { to: '/', label: t('nav.dashboard'), icon: '◧' },
+    { to: '/transactions', label: t('nav.transactions'), icon: '↕' },
+    { to: '/categories', label: t('nav.categories'), icon: '▤' },
+    { to: '/settings', label: t('nav.settings'), icon: '⚙' },
+  ]
+
   return (
     <nav className="sidebar">
-      <div className="brand">Personal Finance</div>
+      <div className="brand">{t('auth.appName')}</div>
       <ul>
         {items.map((i) => (
           <li key={i.to}>
